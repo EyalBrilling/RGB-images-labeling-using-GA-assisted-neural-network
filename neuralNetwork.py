@@ -9,8 +9,9 @@ from keras.models import Sequential
 
 
 
-POP_SIZE = 10
-EPOCH_NUM = 20
+POP_SIZE = 6
+EPOCH_NUM = 50
+EVOLUTION_STAGES = 10
 
 def initiateChromosomeList():
     chromosomeList = []
@@ -34,30 +35,34 @@ def geneticAlgoBasedTraining(x_train,y_train,x_test,y_test):
     model.summary()
     
     chromosomeList = initiateChromosomeList()
-    for chromosome in chromosomeList:
-        for i in range(EPOCH_NUM):
+
+    for stage in range(EVOLUTION_STAGES):
+        for chromosome in chromosomeList:
             model.get_layer('w1').set_weights([chromosome[0],chromosome[1]])
             model.get_layer('w2').set_weights([chromosome[2],chromosome[3]])
-            model.train_on_batch(x_train, y_train)
+            for i in range(EPOCH_NUM):
+                model.train_on_batch(x_train, y_train)
             chromosome = model.get_weights()
-    
-    # test_on_batch for every chromosome
-    chromosomeScores = []
-    for chromosomeIndex,chromosome in enumerate(chromosomeList):
-    # save top half of chromosomes
-    # Crossover
-    # Mutation
-    # all over again
-    weights=model.get_weights()
-    #
+
+        # test_on_batch for every chromosome
+        chromosomeScores = []
+        for chromosomeIndex,chromosome in enumerate(chromosomeList):
+            model.get_layer('w1').set_weights([chromosome[0],chromosome[1]])
+            model.get_layer('w2').set_weights([chromosome[2],chromosome[3]])
+            acc = model.evaluate(x_test,y_test)[1]
+            chromosomeScores.append(acc)
+        # save top half of chromosomes
+        # Crossover
+        # Mutation
+        # all over again
+        weights=model.get_weights()
+        
+        
 def main():
     x_train,y_train = csvToArray("train.csv")
     x_test,y_test= csvToArray("validate.csv")
-
     y_train = intToOnehot(y_train)
     y_test = intToOnehot(y_test)
-
-
     geneticAlgoBasedTraining(x_train,y_train,x_test,y_test)
     #model.fit(x_train, y_train, epochs=10, validation_data=(x_test,y_test))
 
