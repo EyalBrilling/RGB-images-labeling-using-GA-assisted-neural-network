@@ -9,8 +9,8 @@ from keras.models import Sequential
 
 
 
-POP_SIZE = 6
-EPOCH_NUM = 50
+POP_SIZE = 2
+EPOCH_NUM = 10
 EVOLUTION_STAGES = 10
 
 def initiateChromosomeList():
@@ -23,6 +23,7 @@ def initiateChromosomeList():
         chromosome = list([randomizedFirstWeight,randomizedFirstBias,randomizedSecondWeight,randomizedSecondBias])
         chromosomeList.append(chromosome)
     return chromosomeList
+
 
 def geneticAlgoBasedTraining(x_train,y_train,x_test,y_test):
     model = Sequential()
@@ -37,34 +38,53 @@ def geneticAlgoBasedTraining(x_train,y_train,x_test,y_test):
     chromosomeList = initiateChromosomeList()
 
     for stage in range(EVOLUTION_STAGES):
-        for chromosome in chromosomeList:
+        for chromosomeIndex,chromosome in enumerate(chromosomeList):
             model.get_layer('w1').set_weights([chromosome[0],chromosome[1]])
             model.get_layer('w2').set_weights([chromosome[2],chromosome[3]])
-            for i in range(EPOCH_NUM):
-                model.train_on_batch(x_train, y_train)
-            chromosome = model.get_weights()
+            model.fit(x_train, y_train,epochs=EPOCH_NUM,validation_data=(x_test,y_test))
+            chromosomeList[chromosomeIndex] = model.get_weights()
 
         # test_on_batch for every chromosome
         chromosomeScores = []
         for chromosomeIndex,chromosome in enumerate(chromosomeList):
             model.get_layer('w1').set_weights([chromosome[0],chromosome[1]])
             model.get_layer('w2').set_weights([chromosome[2],chromosome[3]])
-            acc = model.evaluate(x_test,y_test)[1]
+            acc = model.evaluate(x_train,y_train)[1]
             chromosomeScores.append(acc)
+        print(chromosomeScores)
         # save top half of chromosomes
+        winningChromosomes = []
+        for i in range(int(POP_SIZE/2)):
+            bestIndex = np.argmax(chromosomeScores)
+            winningChromosomes.append(chromosomeList[bestIndex])
+            chromosomeScores[bestIndex]=0
         # Crossover
+
         # Mutation
         # all over again
-        weights=model.get_weights()
         
         
+def regularTraining(x_train,y_train,x_test,y_test):
+    model = Sequential()
+    model.add(Flatten(input_shape=(3072,)))
+    model.add(Dense(32, activation='sigmoid',name = 'w1'))
+    model.add(Dense(10, activation='softmax',name='w2'))
+    model.compile(loss='categorical_crossentropy', 
+              optimizer='adam',
+              metrics=['acc'])
+    model.summary()
+    model.fit(x_train, y_train, epochs=EPOCH_NUM, validation_data=(x_test,y_test))
+
+    pass
+
 def main():
     x_train,y_train = csvToArray("train.csv")
     x_test,y_test= csvToArray("validate.csv")
     y_train = intToOnehot(y_train)
     y_test = intToOnehot(y_test)
+    regularTraining(x_train,y_train,x_test,y_test)
     geneticAlgoBasedTraining(x_train,y_train,x_test,y_test)
-    #model.fit(x_train, y_train, epochs=10, validation_data=(x_test,y_test))
+    return
 
 if __name__ == '__main__':
     main()
