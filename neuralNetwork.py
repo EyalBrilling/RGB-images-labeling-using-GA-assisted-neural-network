@@ -9,10 +9,9 @@ from keras.models import Sequential
 
 
 
-POP_SIZE = 2
-EPOCH_NUM = 10
-EVOLUTION_STAGES = 10
-
+POP_SIZE = 4
+EPOCH_NUM = 5
+EVOLUTION_STAGES = 5
 def initiateChromosomeList():
     chromosomeList = []
     for chromosomeIndex in range(POP_SIZE):
@@ -24,6 +23,22 @@ def initiateChromosomeList():
         chromosomeList.append(chromosome)
     return chromosomeList
 
+def gaussianMutation():
+    pass
+
+def layersCrossover(chromosomes):
+    children = []
+    for i in range(int(POP_SIZE/2)):
+        parentsIndexes = np.random.randint(0,len(chromosomes),2)
+        father = chromosomes[parentsIndexes[0]]
+        mother = chromosomes[parentsIndexes[1]]
+        coinToss = np.random.randint(0,2)
+        if coinToss == 0 :
+            child = list([father[0],father[1],mother[2],mother[3]])
+        else:
+            child = list([mother[0],mother[1],father[2],father[3]])
+        children.append(child)
+    return children
 
 def geneticAlgoBasedTraining(x_train,y_train,x_test,y_test):
     model = Sequential()
@@ -49,7 +64,7 @@ def geneticAlgoBasedTraining(x_train,y_train,x_test,y_test):
         for chromosomeIndex,chromosome in enumerate(chromosomeList):
             model.get_layer('w1').set_weights([chromosome[0],chromosome[1]])
             model.get_layer('w2').set_weights([chromosome[2],chromosome[3]])
-            acc = model.evaluate(x_train,y_train)[1]
+            acc = model.evaluate(x_test,y_test)[1]
             chromosomeScores.append(acc)
         print(chromosomeScores)
         # save top half of chromosomes
@@ -59,7 +74,8 @@ def geneticAlgoBasedTraining(x_train,y_train,x_test,y_test):
             winningChromosomes.append(chromosomeList[bestIndex])
             chromosomeScores[bestIndex]=0
         # Crossover
-
+        children = layersCrossover(winningChromosomes)
+        chromosomeList = winningChromosomes + children
         # Mutation
         # all over again
         
@@ -73,7 +89,7 @@ def regularTraining(x_train,y_train,x_test,y_test):
               optimizer='adam',
               metrics=['acc'])
     model.summary()
-    model.fit(x_train, y_train, epochs=EPOCH_NUM, validation_data=(x_test,y_test))
+    model.fit(x_train, y_train, epochs=EPOCH_NUM * EVOLUTION_STAGES * POP_SIZE, validation_data=(x_test,y_test))
 
     pass
 
