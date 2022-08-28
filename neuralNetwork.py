@@ -6,25 +6,35 @@ from numpy.random import default_rng
 import matplotlib.pyplot as plt
 from keras.layers import Dense, Flatten
 from keras.models import Sequential
-
+import copy
 
 
 POP_SIZE = 4
-EPOCH_NUM = 5
-EVOLUTION_STAGES = 5
-def initiateChromosomeList():
+EPOCH_NUM = 10
+EVOLUTION_STAGES = 100
+MU,SIGMA = 0,0.2
+GAUSSIAN_MUTATION_PROB = 1
+def initiateChromosomeList(model):
     chromosomeList = []
     for chromosomeIndex in range(POP_SIZE):
-        randomizedFirstWeight= default_rng().uniform(low= -1,high=1,size= (3072,32))
-        randomizedFirstBias= default_rng().uniform(low= -1,high=1,size= (32,))
-        randomizedSecondWeight =  default_rng().uniform(low= -1,high=1,size= (32,10))
-        randomizedSecondBias = default_rng().uniform(low= -1,high=1,size= (10,))
-        chromosome = list([randomizedFirstWeight,randomizedFirstBias,randomizedSecondWeight,randomizedSecondBias])
+    #    randomizedFirstWeight= default_rng().uniform(low= -1,high=1,size= (3072,32))
+    #    randomizedFirstBias= default_rng().uniform(low= -1,high=1,size= (32,))
+    #    randomizedSecondWeight =  default_rng().uniform(low= -1,high=1,size= (32,10))
+    #    randomizedSecondBias = default_rng().uniform(low= -1,high=1,size= (10,))
+        chromosome = model.get_weights()
         chromosomeList.append(chromosome)
     return chromosomeList
 
-def gaussianMutation():
-    pass
+def gaussianMutation(chromosome):
+    w1WeightsGaussianAddition = np.random.normal(MU,SIGMA,(3072,32))
+    w1BiasGaussianAddition = np.random.normal(MU,SIGMA,(32,))
+    w2WeightsGaussianAddition = np.random.normal(MU,SIGMA,(32,10))
+    w2BiasGaussianAddition = np.random.normal(MU,SIGMA,(10,))
+    chromosome[0] += w1WeightsGaussianAddition
+    chromosome[1] += w1BiasGaussianAddition
+    chromosome[2] += w2WeightsGaussianAddition
+    chromosome[3] += w2BiasGaussianAddition
+    return chromosome
 
 def layersCrossover(chromosomes):
     children = []
@@ -50,7 +60,7 @@ def geneticAlgoBasedTraining(x_train,y_train,x_test,y_test):
               metrics=['acc'])
     model.summary()
     
-    chromosomeList = initiateChromosomeList()
+    chromosomeList = initiateChromosomeList(model)
 
     for stage in range(EVOLUTION_STAGES):
         for chromosomeIndex,chromosome in enumerate(chromosomeList):
@@ -70,14 +80,19 @@ def geneticAlgoBasedTraining(x_train,y_train,x_test,y_test):
         # save top half of chromosomes
         winningChromosomes = []
         for i in range(int(POP_SIZE/2)):
-            bestIndex = np.argmax(chromosomeScores)
-            winningChromosomes.append(chromosomeList[bestIndex])
-            chromosomeScores[bestIndex]=0
+             bestIndex = np.argmax(chromosomeScores)
+             winningChromosomes.append(chromosomeList[bestIndex])
+             chromosomeScores[bestIndex]=0
         # Crossover
-        children = layersCrossover(winningChromosomes)
-        chromosomeList = winningChromosomes + children
-        # Mutation
-        # all over again
+        #children = layersCrossover(winningChromosomes)
+
+        savedWinningChromosomes = copy.deepcopy(winningChromosomes)
+   #    # Mutation
+        for chromosome in winningChromosomes:
+           if np.random.random() < GAUSSIAN_MUTATION_PROB:
+               
+               chromosome= gaussianMutation(chromosome)
+        chromosomeList = savedWinningChromosomes + winningChromosomes  
         
         
 def regularTraining(x_train,y_train,x_test,y_test):
@@ -89,8 +104,8 @@ def regularTraining(x_train,y_train,x_test,y_test):
               optimizer='adam',
               metrics=['acc'])
     model.summary()
-    model.fit(x_train, y_train, epochs=EPOCH_NUM * EVOLUTION_STAGES * POP_SIZE, validation_data=(x_test,y_test))
-
+    model.fit(x_train, y_train, epochs= 1, validation_data=(x_test,y_test))
+    #EPOCH_NUM * EVOLUTION_STAGES
     pass
 
 def main():
