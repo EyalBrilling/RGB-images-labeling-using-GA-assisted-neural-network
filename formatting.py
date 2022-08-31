@@ -9,6 +9,8 @@ def csvToArray(filePth):
     csvNumpyArray=csvDataFrame.to_numpy()
     y_train_unflatten,x_train= np.split(csvNumpyArray,[1],axis=1)
     y_train=y_train_unflatten.flatten()
+    # make sure array is of type float64
+    x_train = x_train.astype(np.float64)
     return x_train,y_train
 
 def intToOnehot(labelArray):
