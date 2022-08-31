@@ -10,7 +10,7 @@ from keras.models import Sequential
 import random
 
 POP_SIZE = 8
-EPOCH_NUM = 50
+EPOCH_NUM = 5
 EVOLUTION_STAGES = 50
 MU,SIGMA = 0,0.5
 GAUSSIAN_MUTATION_PROB = 0.4
@@ -100,12 +100,13 @@ def geneticAlgoBasedTraining(x_train,y_train,x_test,y_test):
     model.summary()
     
     chromosomeList = initiateChromosomeList(model)
-
+    history = []
     for stage in range(EVOLUTION_STAGES):
+        historyEpoch = []
         for chromosomeIndex,chromosome in enumerate(chromosomeList):
             model.get_layer('w1').set_weights([chromosome[0],chromosome[1]])
             model.get_layer('w2').set_weights([chromosome[2],chromosome[3]])
-            model.fit(x_train, y_train,epochs=EPOCH_NUM,validation_data=(x_test,y_test))
+            model.fit(x_train, y_train,epochs=1)
             chromosomeList[chromosomeIndex] = model.get_weights()
 
         # test_on_batch for every chromosome
@@ -113,9 +114,10 @@ def geneticAlgoBasedTraining(x_train,y_train,x_test,y_test):
         for chromosomeIndex,chromosome in enumerate(chromosomeList):
             model.get_layer('w1').set_weights([chromosome[0],chromosome[1]])
             model.get_layer('w2').set_weights([chromosome[2],chromosome[3]])
-            acc = model.evaluate(x_test,y_test)[1]
-            chromosomeScores.append(acc)
-        print(chromosomeScores)
+            acc = model.evaluate(x_train,y_train)
+            chromosomeScores.append(acc[1])
+            historyEpoch.append(acc)
+        history.append(historyEpoch)
         # save top half of chromosomes
         winningChromosomes = []
         for i in range(int(POP_SIZE/2)):
@@ -134,9 +136,17 @@ def geneticAlgoBasedTraining(x_train,y_train,x_test,y_test):
            if np.random.random() < GAUSSIAN_MUTATION_PROB:
                
                chromosome= gaussianMutation(chromosome)
+    predictAndWriteToFile(x_test,"output.txt",model)
+    return history
         
-        
-        
+
+def predictAndWriteToFile(x_test,filePath,model):
+    y_pred = model.predict(x_test)
+    with open(filePath,'w') as fl:
+        for predictionList in y_pred:
+            bestIndex = np.argmax(predictionList)
+            fl.write(str(bestIndex+1) + "\n")
+
 def regularTraining(x_train,y_train,x_test,y_test):
     model = Sequential()
     model.add(Flatten(input_shape=(3072,)))
@@ -146,17 +156,28 @@ def regularTraining(x_train,y_train,x_test,y_test):
               optimizer='adam',
               metrics=['acc'])
     model.summary()
-    model.fit(x_train, y_train, epochs= EPOCH_NUM, validation_data=(x_test,y_test))
+    history=model.fit(x_train, y_train, epochs= EPOCH_NUM)
     #EPOCH_NUM * EVOLUTION_STAGES
-    pass
+    return history
+
+def comprassionGraph(regularHistory,GAHistory):
+    regularAcc = [acc[1] for acc in regularHistory]
+    GATrainAcc = [trainAcc[1] for trainAcc in GAHistory]
+    GAValidtionAcc = [trainAcc[3] for trainAcc in GAHistory]
+    plt.plot(regularAcc)
+    plt.plot(GAValidtionAcc)
+    plt.show()
+
 
 def main():
     x_train,y_train = csvToArray("train.csv")
-    x_test,y_test= csvToArray("validate.csv")
+    x_test,y_test= csvToArray("test.csv")
     y_train = intToOnehot(y_train)
-    y_test = intToOnehot(y_test)
-    regularTraining(x_train,y_train,x_test,y_test)
-    geneticAlgoBasedTraining(x_train,y_train,x_test,y_test)
+    #y_test = intToOnehot(y_test)
+    regularHistory=regularTraining(x_train,y_train,x_test,y_test)
+    GAHistory=geneticAlgoBasedTraining(x_train,y_train,x_test,y_test)
+
+    
     return
 
 if __name__ == '__main__':
