@@ -10,10 +10,12 @@ from keras.models import Sequential
 import random
 
 POP_SIZE = 8
-EPOCH_NUM = 5
-EVOLUTION_STAGES = 50
+EPOCH_NUM = 100
+EVOLUTION_STAGES = 500
 MU,SIGMA = 0,0.5
 GAUSSIAN_MUTATION_PROB = 0.4
+BP_MUTATION_PROB = 0.5
+
 def initiateChromosomeList(model):
     chromosomeList = []
     for chromosomeIndex in range(POP_SIZE):
@@ -106,7 +108,8 @@ def geneticAlgoBasedTraining(x_train,y_train,x_test,y_test):
         for chromosomeIndex,chromosome in enumerate(chromosomeList):
             model.get_layer('w1').set_weights([chromosome[0],chromosome[1]])
             model.get_layer('w2').set_weights([chromosome[2],chromosome[3]])
-            model.fit(x_train, y_train,epochs=1)
+            if np.random.random() < BP_MUTATION_PROB:
+                model.fit(x_train, y_train,epochs=1,validation_data=(x_test,y_test))
             chromosomeList[chromosomeIndex] = model.get_weights()
 
         # test_on_batch for every chromosome
@@ -114,10 +117,12 @@ def geneticAlgoBasedTraining(x_train,y_train,x_test,y_test):
         for chromosomeIndex,chromosome in enumerate(chromosomeList):
             model.get_layer('w1').set_weights([chromosome[0],chromosome[1]])
             model.get_layer('w2').set_weights([chromosome[2],chromosome[3]])
-            acc = model.evaluate(x_train,y_train)
+            acc = model.evaluate(x_train,y_train,verbose=0)
             chromosomeScores.append(acc[1])
             historyEpoch.append(acc)
         history.append(historyEpoch)
+        # Print the top 3 chromosome scores
+        print([sorted(chromosomeScores)])
         # save top half of chromosomes
         winningChromosomes = []
         for i in range(int(POP_SIZE/2)):
@@ -136,7 +141,11 @@ def geneticAlgoBasedTraining(x_train,y_train,x_test,y_test):
            if np.random.random() < GAUSSIAN_MUTATION_PROB:
                
                chromosome= gaussianMutation(chromosome)
-    predictAndWriteToFile(x_test,"output.txt",model)
+    
+    bestChromosome = chromosomeList[0]
+    model.get_layer('w1').set_weights([bestChromosome[0],bestChromosome[1]])
+    model.get_layer('w2').set_weights([bestChromosome[2],bestChromosome[3]])
+    
     return history
         
 
@@ -171,9 +180,9 @@ def comprassionGraph(regularHistory,GAHistory):
 
 def main():
     x_train,y_train = csvToArray("train.csv")
-    x_test,y_test= csvToArray("test.csv")
+    x_test,y_test= csvToArray("validate.csv")
     y_train = intToOnehot(y_train)
-    #y_test = intToOnehot(y_test)
+    y_test = intToOnehot(y_test)
     regularHistory=regularTraining(x_train,y_train,x_test,y_test)
     GAHistory=geneticAlgoBasedTraining(x_train,y_train,x_test,y_test)
 
