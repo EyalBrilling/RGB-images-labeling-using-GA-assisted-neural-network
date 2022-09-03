@@ -10,8 +10,8 @@ from keras.models import Sequential
 import random
 
 POP_SIZE = 8
-EPOCH_NUM = 5
-EVOLUTION_STAGES = 50
+EPOCH_NUM = 1
+EVOLUTION_STAGES = 300
 MU,SIGMA = 0,0.5
 GAUSSIAN_MUTATION_PROB = 0.4
 def initiateChromosomeList(model):
@@ -174,7 +174,7 @@ def main():
     x_test,y_test= csvToArray("test.csv")
     y_train = intToOnehot(y_train)
     #y_test = intToOnehot(y_test)
-    regularHistory=regularTraining(x_train,y_train,x_test,y_test)
+    #regularHistory=regularTraining(x_train,y_train,x_test,y_test)
     GAHistory=geneticAlgoBasedTraining(x_train,y_train,x_test,y_test)
 
     
